@@ -1,0 +1,70 @@
+name: Build & Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * *"   # daily submodule refresh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refresh submodules to latest main
+        run: |
+          git submodule update --remote --merge
+          if ! git diff --quiet; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "chore: refresh submodules"
+            git push || echo "Push skipped (no permission or no change)"
+          fi
+
+      - name: Assemble site
+        run: |
+          set -e
+          mkdir -p _site
+          # 1) Root = potsdam-media
+          rsync -a --exclude='.git' --exclude='.github' --exclude='README.md' \
+                _src/potsdam-media/ _site/
+          # 2) /website-showcase
+          mkdir -p _site/website-showcase
+          rsync -a --exclude='.git' --exclude='.github' --exclude='README.md' \
+                _src/website-showcase/ _site/website-showcase/
+          # 3) CNAME (custom domain)
+          cp CNAME _site/CNAME
+          # 4) Sanity: list what we ship
+          echo "=== _site root ==="
+          ls _site
+          echo "=== _site/website-showcase ==="
+          ls _site/website-showcase
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

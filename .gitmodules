@@ -1,0 +1,6 @@
+[submodule "_src/potsdam-media"]
+	path = _src/potsdam-media
+	url = https://github.com/karahanjustin/potsdam-media.git
+[submodule "_src/website-showcase"]
+	path = _src/website-showcase
+	url = https://github.com/karahanjustin/website-showcase.git
