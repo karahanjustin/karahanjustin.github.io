@@ -23,27 +23,22 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Configure git auth for private submodules
-        run: |
-          git config --global url."https://x-access-token:${{ secrets.SUBMODULE_TOKEN }}@github.com/".insteadOf "https://github.com/"
-
-      - name: Checkout (with submodules)
+      - name: Checkout master
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
-          token: ${{ secrets.SUBMODULE_TOKEN }}
 
-      - name: Refresh submodules to latest main
+      - name: Load deploy keys for private submodules
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_KEY_POTSDAM_MEDIA }}
+            ${{ secrets.SSH_KEY_WEBSITE_SHOWCASE }}
+
+      - name: Init submodules
         run: |
-          git submodule update --remote --merge
-          if ! git diff --quiet; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .
-            git commit -m "chore: refresh submodules"
-            git push || echo "Push skipped (no permission or no change)"
-          fi
+          git submodule sync --recursive
+          git submodule update --init --recursive --remote --merge
 
       - name: Assemble site
         run: |
