@@ -44,20 +44,44 @@ jobs:
         run: |
           set -e
           mkdir -p _site
+          # Shared exclude list — keep dev / VCS / config files out of the deployed artifact.
+          EXCLUDES=(
+            --exclude='.git'           --exclude='.github'        --exclude='.gitignore'
+            --exclude='.gitattributes' --exclude='.gitmodules'
+            --exclude='README.md'      --exclude='README'         --exclude='LICENSE*'
+            --exclude='CHANGELOG*'     --exclude='CONTRIBUTING*'
+            --exclude='node_modules'   --exclude='package.json'   --exclude='package-lock.json'
+            --exclude='yarn.lock'      --exclude='pnpm-lock.yaml'
+            --exclude='worker'         --exclude='worker-*'       --exclude='workers'
+            --exclude='wrangler.toml'  --exclude='*.toml'
+            --exclude='.env'           --exclude='.env.*'         --exclude='*.env'
+            --exclude='.vscode'        --exclude='.idea'          --exclude='.DS_Store'
+            --exclude='*.log'          --exclude='*.bak'          --exclude='*.swp'
+            --exclude='*.map'          --exclude='*.key'          --exclude='*.pem'
+            --exclude='*.crt'          --exclude='secrets*'       --exclude='credentials*'
+            --exclude='src'            --exclude='scripts'        --exclude='test'
+            --exclude='tests'          --exclude='__tests__'      --exclude='*.test.*'
+            --exclude='*.spec.*'       --exclude='tsconfig*.json' --exclude='vite.config.*'
+            --exclude='webpack.config.*'
+          )
           # 1) Root = potsdam-media
-          rsync -a --exclude='.git' --exclude='.github' --exclude='README.md' \
-                _src/potsdam-media/ _site/
+          rsync -a "${EXCLUDES[@]}" _src/potsdam-media/ _site/
           # 2) /website-showcase
           mkdir -p _site/website-showcase
-          rsync -a --exclude='.git' --exclude='.github' --exclude='README.md' \
-                _src/website-showcase/ _site/website-showcase/
+          rsync -a "${EXCLUDES[@]}" _src/website-showcase/ _site/website-showcase/
           # 3) CNAME (custom domain)
           cp CNAME _site/CNAME
-          # 4) Sanity: list what we ship
+          # 4) Sanity: list what we ship + warn on anything suspicious
           echo "=== _site root ==="
-          ls _site
+          ls -la _site
           echo "=== _site/website-showcase ==="
-          ls _site/website-showcase
+          ls -la _site/website-showcase
+          echo "=== Scan for leaked dev files (should be empty) ==="
+          find _site \( -name '*.toml' -o -name '*.env*' -o -name '*.key' -o -name 'wrangler*' -o -name 'package.json' \) -print | tee /tmp/leaks.txt
+          if [ -s /tmp/leaks.txt ]; then
+            echo "::error::Dev files leaked into _site (see list above)"
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
