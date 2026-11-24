@@ -1,6 +1,6 @@
-# karahanjustin.github.io → potsdam-media.de
+# karahanjustin.github.io → westfalen-media.de
 
-Master-Repo für die Website unter **https://potsdam-media.de**.
+Master-Repo für die Website unter **https://westfalen-media.de**.
 
 ## Struktur
 
